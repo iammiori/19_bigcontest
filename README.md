@@ -414,3 +414,305 @@ finedust_month.to_csv('finedust_month1.csv',encoding='euc-kr')
 finedust_day.to_csv('finedust_day1.csv',encoding='euc-kr')
 finedust_hour.to_csv('finedust_hour1.csv',encoding='euc-kr')
 ```
+
+----------------------------------------
+**2. SNS 분석**
+**2.  SNS 분석**
+- 미세먼지 관련 글수 세기
+```
+# import 와 파일 로드 (1-8 바꿔가면서 로드)
+import pandas as pd
+df1 = pd.read_excel("../data/SNS_8.xlsx")
+df1.head()
+
+# 결측값을 제거하고 인덱스를 다시 매긴다음 data, title, content column 만
+df2 = df1.dropna()
+df2 = df2.reset_index()
+df2 = df2[["DATE","TITLE","CONTENT"]]
+
+# 새로운 dataframe 생성 
+# 일자별 미세먼지언급량, 총글수 담을 용도
+daily = pd.DataFrame(columns=[['date','cnt_fine','cnt']])
+
+index=0
+
+# cnt1 : 총글수 cnt2 : 미세먼지관련 글수 basket: 총글수 담는 용도
+cnt1=0
+basket=[]
+cnt2=0
+# date 별로 뽑기위한 이중포문
+# 날짜는 계속 변경해가면서 data 수집
+for j in range(1,31):
+    if j<10:
+        date = '2018040' + str(j)
+    else: 
+        date = '201804'+ str(j)
+#date = '20180403'
+#cnt=0
+    for i in range (len(df2)):
+        if (str(df2.iloc[i][0]).count(date))==1:
+            cnt1+=1
+            string= df2.iloc[i][1]
+            string2 = df2.loc[i][2]
+            cnt2 += string.count("미세먼지")
+            cnt2 += string2.count("미세먼지")
+    basket.append(cnt1)
+    daily.loc[index] = [date, cnt2,cnt1]
+    index += 1
+    cnt2=0
+    cnt1=0
+
+df3 = pd.read_csv("../data/201804.csv")
+df3.head()
+
+# 미세먼지 언급량 list에 넣기 (df 추가 위해서)
+add_list = []
+for k in range(len(daily)):
+    adding = int(daily["cnt_fine"].iloc[k])
+    add_list.append(adding)
+
+df3["cnt8_fine"] = add_list
+df3["cnt8"] = basket
+
+# 미세먼지언급량/총글수 변수 생성
+new=[]
+for i in range(len(add_list)):
+    if basket[i]==0:
+        new.append(0)
+    else:
+        new.append(add_list[i]/basket[i])
+
+df3["new8"] = new
+df3.head()
+df3.to_csv("../data/201804.csv",index=False)
+```
+
+-  sns 자연어처리
+```
+import codecs
+from konlpy.tag import Twitter
+from gensim.models import word2vec
+# konlpy twitter 사용
+import pandas as pd
+
+df1 = pd.read_csv("../data/antiDust.csv",encoding="euc-kr")
+df1.head()
+
+#df1 = df1[["TITLE","CONTENT"]]
+df1 = df1["content"]
+df1.head()
+
+df1.isnull().sum()
+len(df1)
+
+df2 = df1.dropna()
+df2 = df2.reset_index()
+#df2 = df2[["TITLE","CONTENT"]]
+df2.head()
+
+# 한글만 추출
+import re
+for i in range(len(df2)):
+    #s = df2["TITLE"].iloc[i]
+    s2 = df2["content"].iloc[i]
+    hangul = re.compile('[^ ㄱ-ㅣ가-힣]+')
+   # result = hangul.sub('',str(s))
+    result2 = hangul.sub('',str(s2))
+   # df2["TITLE"].iloc[i] = result
+    df2["content"].iloc[i] = result2
+
+df2.head()
+df2.to_csv("../data/antiDust_clean.csv",index=False,encoding="euc-kr")
+```
+
+- sns 1-8 data 너무 방대하니, 랜덤으로 추출
+```
+from random import *
+import pandas as pd
+
+#skiprows를 활용해, 각 데이터 마다 랜덤으로 추출
+p = 0.01
+df1 = pd.read_csv("../data/SNS_1_clean.csv", skiprows=lambda i: i > 0 and random() > p)
+len(df1)
+
+# dataframe 만들어서, 랜덤으로 뽑힌 데이터 저장
+new = pd.DataFrame(columns=[['title','content']])
+tmp = len(new)
+tmp
+for i in range(len(df1)):
+    t = df1["TITLE"].iloc[i]
+    c = df1["CONTENT"].iloc[i]
+    new.loc[tmp+i] = [t,c]
+print(len(new))
+new.head()
+new.to_csv("../data/SNS_random_1.csv",encoding="euc-kr",index=False)
+```
+
+- 워드클라우드 
+```
+from collections import Counter
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+
+# sns 별 단어 빈도수를 기반으로 새로운 txt 작성
+f = open("../data/wordCloud.txt","w")
+
+# 단어 빈도수를 기반으로 twitter noun 추출하는 시간을 아끼기위해
+# 빈도수를 비율로 따져서 명사만 있는 파일 작성
+for i in range(2000):
+    if (i<400):
+        a = "미세먼지 피부 사용 기능 제품 아이 시간 관리 생각 청소 효과 우리 정말 오늘 제거 추천 사진 가격 사람 얼굴 하나 마스크 요즘 공기 케어 성분 필터 차단 환경 건강 서울 공기청정기 판매 환기 학교 창업 농도\n"
+        f.write(a)
+    elif (i<600):
+        a = "미세먼지 피부 사용 기능 제품 아이 시간 관리 생각 청소 효과 우리 정말 오늘 제거 추천 사진 가격 사람 얼굴 마스크  공기 케어 성분 필터 차단 환경 건강 서울 공기청정기 판매 환기 학교 \n"
+        f.write(a)
+    elif (i<800):
+        a="미세먼지 피부 사용 기능 제품 아이 관리 생각 청소 효과 우리 제거 추천 가격 사람 얼굴 마스크  공기 케어 성분  차단 환경 건강 서울 공기청정기 판매 환기 \n"
+        f.write(a)
+    elif (i<1000):
+        a= "미세먼지 피부 사용 제품 아이 관리 생각 효과 제거 추천 가격 사람 얼굴 마스크  공기 케어 성분  차단 환경 건강 공기청정기 판매 환기\n"
+        f.write(a)
+    elif (i<1500):
+        a = "미세먼지 피부 제품 아이 제거  마스크  공기 케어 차단 환경 건강 공기청정기\n"
+        f.write(a)
+    else:
+        a = "미세먼지 피부 \n"
+        f.write(a)
+f.close()
+text = open("../data/wordCloud.txt",'rt', encoding='UTF8').read()
+
+from konlpy.tag import Twitter
+engin = Twitter()
+nouns = engin.nouns(text)
+nouns = [n for n in nouns if len(n)>1]
+count = Counter(nouns)
+tags = count.most_common(50)
+
+import numpy as np
+from PIL import Image
+
+coloring = np.array(Image.open("data/cloud.png"))
+from wordcloud import ImageColorGenerator
+image_colors = ImageColorGenerator(coloring)
+
+plt.figure(figsize=(11,11))
+plt.imshow(coloring, interpolation='bilinear',cmap=plt.cm.gray)
+plt.axis("off")
+plt.show()
+
+# 이미지에 맞춰 워드클라우드 제작
+wordcloud1 = WordCloud(font_path="data/NanumSquare_acB.ttf",background_color="white",mask=coloring,relative_scaling=0.1).generate_from_frequencies(dict(tags))
+
+plt.figure(figsize=(12,12))
+plt.imshow(wordcloud1.recolor(color_func=image_colors), interpolation='bilinear')
+plt.axis("off")
+plt.show()
+```
+
+- gensim 을 활용한 연관도 분석
+```
+import codecs
+from konlpy.tag import Twitter
+from gensim.models import word2vec
+import pandas as pd
+
+df1 = pd.read_csv("../data/SNS_random.csv", encoding="euc-kr")
+df1.head()
+len(df1)
+df1.isnull().sum()
+df2 = df1.dropna()
+df2 = df2.reset_index()
+#df2 = df2[["title","content"]]
+df2 = df2["content"]
+df2.head()
+len(df2)
+
+# twitter를 사용하고, 품사태깅을 통해 자연어 처리
+twitter = Twitter()
+results = []
+for i in range (len(df2)):
+    line = df2.iloc[i]
+    malist = twitter.pos(line, norm=True, stem= True)
+    r = []
+    for word in malist:
+        if not word[1] in ["Josa", "Eomi","PreEomi","Exclamation","Adverb","Verb","Conjunction","Determiner", "Punctuation","KoreanParticle"] and len(word[0])>1 and word[0]!="로부터" and word[0]!="스트" and word[0]!="있다" and word[0]!="같다":        
+            r.append(word[0])
+    rl = (" ".join(r)).strip()
+    # strip : 좌우공백 없애기
+    results.append(rl)
+    #print(rl)
+
+wakati_file = 'data/mise_random_1.wakati'
+with open(wakati_file, 'w', encoding='utf-8') as fp:
+    fp.write("\n".join(results))
+
+# 앞뒤로 70개를 보며, 2000 번 반복학습하고 쿼드코어 사용
+data = word2vec.LineSentence(wakati_file)
+model = word2vec.Word2Vec(data,
+                          size = 100, window=70, hs=1, min_count=40, sg=1, workers=4, iter=2000)
+
+model.save("data/mise_random_1.model")
+print(model)
+
+from gensim.models import word2vec
+model = word2vec.Word2Vec.load("data/mise_random_1.model")
+
+#연관있는 단어 10개 추출
+model.most_similar(positive=["미세먼지"],topn=10)
+```
+
+- 단어별 빈도수 추출
+```
+import pandas as pd
+df1 = pd.read_excel("../data/SNS_1.xlsx")
+df1.head()
+df1 = df1[["TITLE","CONTENT"]]
+df1.head()
+# null 확인 (konlpy 쓸때 error 발생)
+df1.isnull().sum()
+df1_title = df1["TITLE"]
+df1_content = df1["CONTENT"]
+#len(df1_title) #1561112
+df1_title.dropna()
+df1_title.reset_index()
+df1_content.dropna()
+df1_content.reset_index()
+#df1_content.head()
+
+from konlpy.tag import Twitter
+from collections import Counter
+sns2 = Twitter()
+
+def get_dict(text):
+    spliter=Twitter()
+    nounss = spliter.nouns(text)
+    count= Counter(nounss)
+    return_list = []
+    for n,c in count.most_common():
+        tmp = {'tag':n,'count':c}
+        return_list.append(tmp)
+    return return_list
+
+text_file_name="../data/sns1_contet_final.txt"
+noun_count= 0
+output_file_name = "../data/sns1_content.txt"
+open_text_file = open(text_file_name,'r')
+text = open_text_file.read()
+tags = get_dict(text)
+open_text_file.close()
+
+open_output_file = open(output_file_name,'w')
+for tag in tags:
+    noun = tag['tag']
+    count = tag['count']
+    if len(noun)>1:
+        open_output_file.write('{} {}\n'.format(noun,count))
+        noun_count = noun_count+1
+        if noun_count == 50:
+            break
+open_output_file.close()
+```
+
+
+
+
