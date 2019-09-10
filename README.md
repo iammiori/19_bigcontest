@@ -416,8 +416,19 @@ finedust_day.to_csv('finedust_day1.csv',encoding='euc-kr')
 finedust_hour.to_csv('finedust_hour1.csv',encoding='euc-kr')
 ```
 
+- 그래프 생성 (R)
+
+```
+library(readr)
+finedust <- read_csv("D:/finedust_day1.csv")
+
+library(tidyverse)
+ggplot(data=finedust)+
+  geom_point(mapping=aes(x=tm,y=pm,color=class))
+```
+
 ----------------------------------------
-**2. SNS 분석**
+
 **2.  SNS 분석**
 - 미세먼지 관련 글수 세기
 ```
