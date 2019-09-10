@@ -1702,8 +1702,1652 @@ card_81_group_df = card_81_group_df.sort_values(['USE_AMT'], ascending=[False])
 card_81_group_df.head()
 ```
 
+----------------
+4. 유동인구 + 의사결정나무
+
+**5. 유동인구 데이터 분석**
+```
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import seaborn as seaborn
+from collections import Counter
+import math
+import glob
+```
+
+> 유동인구 데이터 분석
+- 공공데이터에서 갖고온 산업체 대분류별 종사자 수 데이터와 세대수 데이터를 갖고와서 행정동별 이해를 높이는 것이 목적
+-  종사자 수 데이터 생성  후 유동인구 데이터와 결합 
+-  종사자 수 데이터의 경우 업종별 총 종사자 수와 여성 종사자 수만 나와 있음 따라서 두 칼럼의 차인 남성 종사자수 칼럼을 새로 생성
+-  이후 이 데이터를 기존의 유동인구 데이터와 결합하여 의사결정나무 분석을 하고 자 함
+-  또한 그 전에 기본적인 탐색적 자료 분석을 하는것이 선행되어야 함. 따라서 종로구, 노원구만 가지고 빈도분석 하는 것이 필요해보임
 
 
+```
+os.chdir('C:/Users/Rangkku/Desktop/bigcon/people/')
+labor = pd.read_csv("labor.txt",sep = "\t") ## 산업체 대분류별 종사자 수
+lb = labor
+lb.columns
+lb.head()
+lb = lb.loc[(lb.자치구 == '종로구')|(lb.자치구 == '노원구')]##종로구 노원구만 인덱싱
+lb =  lb.reset_index(drop = True)
+lb.head()
+lb= lb.rename(columns={'합계': '사업체 수', '합계.1': '총 종사자 수','합계.2':'여성 종사자 수'})
+lb_t = lb.copy()
+for i in range(len(lb_t.columns)): ### 이름 변경 .1 에서 여성종사자 수로 
+    if '1' in lb_t.columns[i]:
+        lb =  lb.rename(columns= {lb_t.columns[i]:lb_t.columns[i-1]+' 여성 종사자 수'})
+#     df_sex_t.iloc[i,1] = df_sex_t.iloc[i,1].replace(".",",")
+# lb_t.head(2)
+col_ht = [lb_t.columns[x] for x in range(4,43,2)]
+col_ht
+## 데이터중  - 로 되어 있는 데이터 0으로 바꾸기
+for i in range(len(lb_t.columns)):
+     lb_t[lb_t.columns[i]] = lb_t[lb_t.columns[i]].apply(lambda x : 0 if x == '-' else x)
+for  i in col_ht:
+    if '여성' in i : 
+        continue
+    else : 
+        print(i+' 남성 종사자 수')
+lb_t.columns
+type(lb_t['광업'][1])
+# apply(lambda x : 0 if x == '-' else x)
+for i in range(len(lb_t)):
+    lb_t.iloc[i,1] = lb_t.iloc[i,1].replace(",","")
+x = '10,490'
+print(type(x))
+x.replace(",","")
+
+lb_cht = lb_t[lb_t['동']=='소계']
+lb_cht = lb_cht[['자치구','총 종사자 수',
+ '농업 임업 및 어업',
+ '광업',
+ '제조업',
+ '전기 가스 증기 및 공기조절 공급업',
+ '수도 하수 및 폐기물 처리 원료 재생업',
+ '건설업',
+ '도매 및 소매업',
+ '운수 및 창고업',
+ '숙박 및 음식점업',
+ '정보통신업',
+ '금융 및 보험업',
+ '부동산업',
+ '전문 과학 및 기술 서비스업',
+ '사업시설 관리 사업 지원 및 임대 서비스업',
+ '공공행정 국방 및 사회보장 행정',
+ '교육 서비스업',
+ '보건업 및 사회복지 서비스업',
+ '예술 스포츠 및 여가관련 서비스업',
+ '협회 및 단체 수리 및 기타 개인 서비스업']]
+group_sizes = list(lb_cht.iloc[1][2:])
+group_names = list(lb_cht.columns[2:])
+group_explodes = ()
+lb_cht.columns[1:]
+len(group_names )
+len(group_sizes)
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+from matplotlib import rc
+mpl.rcParams['axes.unicode_minus'] = False
+font_name = fm.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
+rc('font', family=font_name)
+plt.rcParams['figure.figsize'] = [12, 8]
+lb_cnt = labor[labor['동']=='소계']
+lb_cnt = lb_cnt[['자치구','총 종사자 수',
+ '농업 임업 및 어업',
+ '광업',
+ '제조업',
+ '전기 가스 증기 및 공기조절 공급업',
+ '수도 하수 및 폐기물 처리 원료 재생업',
+ '건설업',
+ '도매 및 소매업',
+ '운수 및 창고업',
+ '숙박 및 음식점업',
+ '정보통신업',
+ '금융 및 보험업',
+ '부동산업',
+ '전문 과학 및 기술 서비스업',
+ '사업시설 관리 사업 지원 및 임대 서비스업',
+ '공공행정 국방 및 사회보장 행정',
+ '교육 서비스업',
+ '보건업 및 사회복지 서비스업',
+ '예술 스포츠 및 여가관련 서비스업',
+ '협회 및 단체 수리 및 기타 개인 서비스업']]
+lb_cnt = lb_cnt.T
+lb_cnt
+lb_cnt.columns
+No= lb_cnt.iloc[1:,1]
+No.sort_values(ascending=False)
+jong= lb_cnt.iloc[1:,0]
+jong.sort_values(ascending=False)[:6]
+jong.sort_values(ascending=False)[:6].index
+nowon = list(lb_cht.iloc[1][:]);nowon
+```
+
+> 노원/종로 산업체 종사자
+- 노원 top5 산업체 종사자 
+
+교육 서비스업                     21222 >
+보건업 및 사회복지 서비스업       18404 >
+도매 및 소매업                    15534 >
+숙박 및 음식점업                   14211 >
+운수 및 창고업                    12677
+
+- 종로 top5 산업체 종사자 
+
+도매 및 소매업                    44263 >
+건설업                         30754 >
+숙박 및 음식점업                   26577 >
+금융 및 보험업                    21634 >
+전문 과학 및 기술 서비스업             20315
+
+```
+def make_pie(group_size):
+    import matplotlib.pyplot as plt
+    group_sizes = list(group_size)
+    plt.pie(group_sizes, labels=group_size.index) # text font size
+    plt.savefig("fig.png")
+labor=pd.read_csv("labor_all.csv",encoding="euc-kr")
+lbr= labor[['동',
+ '농업 임업 및 어업',
+ '광업',
+ '제조업',
+ '전기 가스 증기 및 공기조절 공급업',
+ '수도 하수 및 폐기물 처리 원료 재생업',
+ '건설업',
+ '도매 및 소매업',
+ '운수 및 창고업',
+ '숙박 및 음식점업',
+ '정보통신업',
+ '금융 및 보험업',
+ '부동산업',
+ '전문 과학 및 기술 서비스업',
+ '사업시설 관리 사업 지원 및 임대 서비스업',
+ '공공행정 국방 및 사회보장 행정',
+ '교육 서비스업',
+ '보건업 및 사회복지 서비스업',
+ '예술 스포츠 및 여가관련 서비스업',
+ '협회 및 단체 수리 및 기타 개인 서비스업']]
+lbr_cnt = lbr[lbr['동']!='소계']
+lbr_cnt =  lbr_cnt.T
+lbr_cnt.head()
+lbr_cnt.iloc[0]
+lbr_cnt.columns = lbr_cnt.iloc[0]
+lbr_cnt = lbr_cnt.drop("동",axis = 0 )
+dnum = len(lbr_cnt.columns)## 동개수
+tmp= lbr_cnt.iloc[1:,0]
+tmp.sort_values(ascending=False)[:5]
+for i in range(dnum):
+    tmp= lbr_cnt.iloc[1:,i]
+    print(tmp.sort_values(ascending=False)[:5])
+
+tmp= lbr_cnt.iloc[1:,0]
+jong.sort_values(ascending=False)[:6]
+len(lbr_cnt)
+lbr_cnt.head()
+
+group_sizes = list(lb_cht.iloc[0][2:])## 종로구
+plt.pie(group_sizes,labels=group_names) 
+plt.title("종로구 업종별 종사자 수")
+#10,490과 같이 문자로 되어 있는 경우 이를 숫자로 변경하기 위한 전처리를 진행
+for i in range(len(lb_t.columns)):
+    if i > 2: 
+        lb_t[lb_t.columns[i]] = lb_t[lb_t.columns[i]].apply(lambda x : x.replace(",","") if type(x) == str else x )##,를 제거
+        lb_t[lb_t.columns[i]] = lb_t[lb_t.columns[i]].apply(lambda x : int(float(x)) )## int형으로 만듬
+for  i in col_ht :
+    if '여성' not in i : 
+        lb_t[i+' 남성 종사자 수']  = lb_t[i]-lb_t[i+' 여성 종사자 수']
+
+# 남성종사자수 = 총 - 여성 종사자수
+lb_t.columns
+lb_t.to_csv("labor_all.csv",header=True,index = False, encoding="euc-kr")
+labor=pd.read_csv("labor_all.csv",encoding="euc-kr")
+labor.head()
+
+# 세대수 데이터 EDA
+household = pd.read_csv("house.txt",sep = "\t") ## 세대 수 19
+hd = household
+household.head()
+hd = hd.loc[(hd.자치구 == '종로구')|(hd.자치구 == '노원구')]##종로구 노원구만 인덱싱
+hd = hd.reset_index(drop = True) ##인덱스  초기화
+hd = hd.rename(columns={'기간': 'STD_YM', '자치구': 'SGNG_NM','행정동':'HDONG_NM'})# 칼럼 이름 변경(merge 하기위한 준비)
+hd.head()
+hd.iloc[2,0]
+for i in range(len(hd)):
+    hd.iloc[i,0] = str(hd.iloc[i,0]).replace(".","")
+#     hd.iloc[i,0] = int(hd.iloc[i,0])
+hd.STD_YM = hd.STD_YM.apply(lambda x : int(x))
+print(type(hd.iloc[2,0]))
+hd.head()
+##- 를 제거
+for i in range(len(hd.columns)):
+    if i> 2: 
+        hd[hd.columns[i]]= hd[hd.columns[i]].apply(lambda x : 0 if x == '-' else x)
+#10,490과 같이 문자로 되어 있는 경우 이를 숫자로 변경하기 위한 전처리를 진행
+for i in range(len(hd.columns)):
+    if i> 2: 
+        hd[hd.columns[i]]= hd[hd.columns[i]].apply(lambda x : x.replace(",","") if type(x) == str else x )##,를 제거
+        hd[hd.columns[i]]= hd[hd.columns[i]].apply(lambda x : int(float(x)))## int형으로 만듬
+
+hd['2-3인세대'] = hd['2인세대']+hd['3인세대']
+hd['4인세대 이상']  = hd['4인세대'] +hd['5인세대'] +hd['6인세대'] +hd['7인세대'] +hd['8인세대'] +hd['9인세대']+ hd['10인세대 이상']
+hd['5인세대 이상']  = hd['5인세대'] +hd['6인세대'] +hd['7인세대'] +hd['8인세대'] +hd['9인세대']+ hd['10인세대 이상']
+hd['3-4인세대'] = hd['3인세대']+hd['4인세대']
+hdt = hd[['STD_YM', 'SGNG_NM', 'HDONG_NM', '전체세대수', '1인세대','2인세대','3-4인세대',
+       '5인세대 이상']].copy()
+hdt.head()
+
+sth_j = hdt[(hdt['SGNG_NM']=='종로구')&(hdt['HDONG_NM']!='소계')].groupby('HDONG_NM').mean()
+sth_n = hdt[(hdt['SGNG_NM']!='종로구')&(hdt['HDONG_NM']!='소계')].groupby('HDONG_NM').mean()
+sth_j[['1인세대','2인세대','3-4인세대',
+       '5인세대 이상']].plot(kind = 'bar')
+sth_n[['1인세대','2인세대','3-4인세대',
+       '5인세대 이상']].plot(kind = 'bar')
+sth [['1인세대','2인세대','3-4인세대','5인세대 이상']]
+
+from collections import Counter
+import math
+sth.iloc[0,1:]
+sth.iloc[1,1:]
+sth.columns[1:]
+plt.figure(figsize=(4,3))
+plt.bar(sth.columns[2:],sth.iloc[0,2:],width = 0.5)
+# plt.xlabel('code', fontsize = 14)
+plt.xticks(fontsize = 11)
+plt.yticks(fontsize = 11)
+plt.figure(figsize=(4,3))
+plt.bar(sth.columns[2:],sth.iloc[1,2:],width = 0.5)
+# plt.xlabel('code', fontsize = 14)
+plt.xticks(fontsize = 11)
+plt.yticks(fontsize = 11)
+sth.iloc[1,1:]
+len(hdt)
+hdt.describe()
+plt.boxplot(hdt[['1인세대','2-3인세대','4인세대 이상']])
+
+fig = plt.figure(figsize=(20,14))
+ax1 = fig.add_subplot(2, 1, 1)
+ax2 = fig.add_subplot(2, 1, 2)
+ax1.set_title('종로구 1인 세대 수')
+ax1.bar(hdt[hdt['SGNG_NM']=='종로구']['HDONG_NM'],hdt[hdt['SGNG_NM']=='종로구']['1인세대'])
+ax2.set_title('노원구 1인 세대 수')
+ax2.bar(hdt[hdt['SGNG_NM']!='종로구']['HDONG_NM'],hdt[hdt['SGNG_NM']!='종로구']['1인세대'])
+hdt[hdt['SGNG_NM']=='종로구']['HDONG_NM']
+hdg = hdt.groupby('HDONG_NM')
+np.round(hdg.sum(),2)
+
+# 시간대별 성연령대별 
+#시간대별 데이터 불러오기
+#성연령대별 + 미세먼지 데이터 불러오기 
+os.chdir('C:/Users/Rangkku/Desktop/bigcon/people/')
+poptm = pd.read_csv("poptime.csv",encoding="euc-kr")
+popsd = pd.read_csv("dustpop.csv",encoding="euc-kr")
+poptm.columns
+popsd.columns
+poptm.head()
+hdpop=  pd.merge(poptm, hdt, on = ['STD_YM','HDONG_NM','SGNG_NM'],how = 'inner')
+hdpop['HDONG_NM'] = hdpop['HDONG_NM'].apply(lambda x : x.replace(".",","))
+## 세대수 데이터와 기존의 시간대별 유동인구 데이터와 결합
+pop_nm= popsd.drop_duplicates('HDONG_NM',keep ='first')
+len(pop_nm['HDONG_NM'])
+hd_nm = hdpop.drop_duplicates('HDONG_NM',keep ='first')
+hd_nm['HDONG_NM'] = hd_nm['HDONG_NM'].apply(lambda x : x.replace(".",","))
+len(hd_nm['HDONG_NM'])
+print(len(hdpop))
+hdpop.head()
+type(poptm.iloc[1,0])
+print(len(popsd))
+popsd.head()
+pop_i = pd.merge(hdpop,popsd,on = ['STD_YM','HDONG_NM','SGNG_NM','STD_YMD','HDONG_CD'],how = 'inner')
+pop_i.columns
+pop_i.columns
+
+# 의사결정나무
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+# from sklearn.cross_validation import train_test_split
+import pydot
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+# from sklearn.cross_validation import train_test_split
+import pydot
+poptm1 = poptm[['STD_YM', 'STD_YMD', 'HDONG_NM','SGNG_NM', 'ya', 'jeon',
+       'sim', 'hu', 'jeo']]
+popsd1 =  popsd[['SGNG_NM', 'HDONG_NM', 'STD_YM', 'STD_YMD','MAN_FLOW',
+       'WMAN_FLOW', 'ALL_FLOW', 'humi', 'noise', 'pm10', 'pm25', 'temp',
+       'yoil', 'weekend', 'pm25_class', 'pm10_class']]
+
+import sys; print(sys.executable); import graphviz; print(graphviz.__path__) 
+sd_dong = popsd1.drop_duplicates('HDONG_NM',keep='first')
+sd_dong.HDONG_NM
+for i in range(len(poptm1)):
+    lb_t[lb_t.columns[i]] = lb_t[lb_t.columns[i]].apply(lambda x : x.replace(",","") 
+poptm1['HDONG_NM'] = poptm1['HDONG_NM'].apply(lambda x : x.replace(".",",") )
+tm_dong = poptm1.drop_duplicates(['HDONG_NM'],keep='first')
+tm_dong.HDONG_NM
+data = pd.merge(popsd1,poptm1,on=['STD_YM', 'STD_YMD', 'HDONG_NM','SGNG_NM'],how= 'inner')
+data.head()
+!pip install pydot
+data = pop_i
+data.columns
+data['전체세대수'] = data['전체세대수'].apply(lambda x : x.replace(",","") if type(x) == str else x )##,를 제거
+data = data.dropna()
+y = data.ALL_FLOW
+x = data[[ 'STD_YM', 'STD_YMD','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil', 'weekend','전체세대수','1인세대', '2-3인세대', '4인세대 이상']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+os.getcwd()
+
+X_train.isnull().any()
+
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import r2_score
+from sklearn.ensemble import RandomForestRegressor
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+from sklearn.model_selection import GridSearchCV
+
+estimator = DecisionTreeRegressor()
+param_grid = {'criterion':['mse'], 'max_depth':[None,2,3,4,5,6]}
+#param_grid = {'criterion':['mse','friedman_mse','mae'], 'max_depth':[None,2,3,4,5,6], 'max_leaf_nodes':[None,2,3,4,5,6,7], 'min_samples_split':[2,3,4,5,6], 'min_samples_leaf':[1,2,3], max_features:[None,'sqrt','log2',3,4,5]}
+
+grid = GridSearchCV(estimator, param_grid=param_grid) 
+#grid = GridSearchCV(estimator, param_grid=param_grid, cv=3, scoring='r2') #디폴트로 cv=3, 회귀에서 디폴트로 scoring='r2'
+
+grid.fit(X_train, y_train)
+
+print(grid.best_score_)
+print(grid.best_params_)
+df = pd.DataFrame(grid.cv_results_)
+print(df)
+#print(df.sort_values(by='param_max_depth'))
+#print(df.sort_values(by='param_max_depth', ascending=0))
+#print(df.sort_values(by='rank_test_score'))
+
+estimator = grid.best_estimator_
+```
+> 결과
+- 의사결정나무의 하이퍼 파라미터를 찾아본 결과 max depth가 아예 없는 경우가 가장 mean test score 가 높게 나왔다.
+
+```
+rm = DecisionTreeRegressor(max_depth = None)
+model = rm.fit(X_train, y_train)
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+
+plt.figure(figsize = (8,6))
+sns.barplot(x=ftr_sort, y = ftr_sort.index)
+plt.show()
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+
+plt.figure(figsize = (8,6))
+sns.barplot(x=ftr_sort, y = ftr_sort.index)
+plt.show()
+```
+
+> 유동인구 카드 데이터 파일 + 의사결정나무 분석
+```
+pc=pd.read_csv("pop_card_df.csv")## 유동인구와 카드 결합된 데이터 
+pc.head()
+
+pc['time'] = pc['time'].apply(lambda x : x.replace("-",""))## 전처리를 위해 날짜의 '-'를 제거
+pc['dong'] = pc['dong'].apply(lambda x : x.replace(".",","))## 다음에 pi 데이터와 합치기 위해 .->,로 바꿈
+pc['time'] = pc['time'].astype(int)
+data =pc[['time', 'SEX_CD', 'AGE_CD', 'USE_AMT','flow']]
+x = data[['time','SEX_CD', 'AGE_CD', 'USE_CNT','flow']]
+y = data.USE_AMT
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+
+plt.figure(figsize = (8,6))
+sns.barplot(x=ftr_sort, y = ftr_sort.index)
+plt.show()
+```
+
+> 유동+세대수+ 카드 의사결정나무
+```
+pc = pc[['time', 'gu', 'dong', 'MCT_CAT_CD', 'SEX_CD', 'AGE_CD',
+       'USE_CNT', 'USE_AMT', 'flow']]
+pop_i =pd.read_csv("real_pop.csv",encoding="euc-kr")
+pop_i.head()
+pi = pop_i[[ 'STD_YM','HDONG_NM', 'STD_YMD','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil', 'weekend']]
+pi = pi.rename(columns = {'STD_YMD':'time','HDONG_NM':'dong'})
+pi['time'] = pi['time'].astype(int)
+pc['time'] = pc['time'].astype(int)
+data = pd.merge(pi,pc,on = ['time','dong'])
+```
+
+> 의사결정나무 분석 미세먼지 - 매출액 예측
+```
+data.columns
+data  = data.dropna()
+y = data.USE_AMT
+x = data[[  'humi', 'noise', 'pm10', 'pm25', 'temp','AGE_CD']]
+x.isnull().any()
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+import io
+import pydot
+from IPython.core.display import Image
+from sklearn.tree import export_graphviz
+
+def draw_decision_tree(model):
+    dot_buf = io.StringIO()
+    export_graphviz(model, out_file=dot_buf, feature_names=feature_names)
+    graph = pydot.graph_from_dot_data(dot_buf.getvalue())[0]
+    image = graph.create_png()
+#     node [fontname = font_name, fontsize="11"]
+#     image.savefig('tree.png')
+    return Image(image)
+feature_names = list(x.columns)
+draw_decision_tree(model)
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+
+plt.figure(figsize = (8,6))
+sns.barplot(x=ftr_sort, y = ftr_sort.index)
+plt.show()
+
+y = data.USE_AMT
+x = data[[ 'time', 'humi', 'noise', 'pm10', 'pm25', 'temp',
+       'yoil', 'weekend', '전체세대수', '1인세대', '2-3인세대', '4인세대 이상',
+       'MCT_CAT_CD', 'SEX_CD', 'AGE_CD', 'USE_CNT',  'flow']]
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+feature_names = list(x.columns)
+draw_decision_tree(model)
+
+from sklearn.neighbors import KNeighborsRegressor
+model = KNeighborsRegressor()
+model.fit(X_train, y_train)
+knr_prediction = model.predict(X_test)
+result = np.sqrt(mean_squared_error(knr_prediction, y_test))
+rmse.append(result)
+```
+
+> 의사결정나무를 위한 그래프 생성함수
+```
+!pip install graphviz
+import io
+import pydot
+from IPython.core.display import Image
+from sklearn.tree import export_graphviz
+
+def draw_decision_tree(model):
+    dot_buf = io.StringIO()
+    export_graphviz(model, out_file=dot_buf, feature_names=feature_names)
+    graph = pydot.graph_from_dot_data(dot_buf.getvalue())[0]
+    image = graph.create_png()
+#     node [fontname = font_name, fontsize="11"]
+#     image.savefig('tree.png')
+    return Image(image)
+import io
+import pydot
+from IPython.core.display import Image
+from sklearn.tree import export_graphviz
+
+def draw_decision_tree(model):
+    dot_buf = io.StringIO()
+    export_graphviz(model, out_file=dot_buf, feature_names=feature_names)
+    graph = pydot.graph_from_dot_data(dot_buf.getvalue())[0]
+    image = graph.create_png()
+#     node [fontname = font_name, fontsize="11"]
+#     image.savefig('tree.png')
+    return Image(image)
+dot_buf = io.StringIO()
+dot_buf
+feature_names = list(x.columns)
+# dot_buf = 'pop.dot'
+draw_decision_tree(model)
+data.columns
+```
+
+> 업종별 종사자수 EDA
+```
+labor=pd.read_csv("labor_all.csv",encoding="euc-kr")
+labor.head()
+lb= lb.rename(columns={'합계': '사업체 수', '합계.1': '총 종사자 수','합계.2':'여성 종사자 수'})
+labor.rename(columns={'동':'HDONG_NM'})
+dong_NM  =  data.drop_duplicates(['HDONG_NM'],keep='first')
+pop_tree = tree.DecisionTreeClassifier(criterion='entropy', max_depth=3, random_state=0)
+pop_tree.fit(X_train, y_train)
+df_dust = pd.read_csv("finedust_day.csv")
+df_dust = df_dust.rename(columns = {'Unnamed: 0': 'STD_YMD'})
+df_dust.head()
+df_dust.isnull().any()## 어떻게 처리할지 고민해보기
+from sklearn import tree
+pop_tree = tree.DecisionTreeClassifier(criterion='entropy', max_depth=3, random_state=0)
+pop_tree.fit(X_train, y_train)
+dong = pd.get_dummies(data['HDONG_NM'])
+from sklearn.tree import export_graphviz
+import pydotplus
+from IPython.display import Image
+!pip install pydotplus
+```
+
+> 편의점 데이터 동별로 확인
+```
+gs_df = pd.read_csv("gs.csv")
+gs_df.columns
+gs1 = gs_df.copy()
+gs1 = gs1.rename(columns={'10_rate':'food_rate', '20_rate':'snack_rate',
+       '30_rate':'drink_rate', '40_rate':'homeliving_rate', '50_rate':'health_rate', '60_rate':'hobby_rate', '70_rate':'social_rate', '80_rate':'baby_rate'})
+gs1 = gs1.rename(columns={'10_index':'food_index', '20_index':'snack_index','30_index':'drink_index', '40_index':'homeliving_index', '50_index':'health_index', '60_index':'hobby_index', '70_index':'social_index', '80_index':'baby_index'})
+gs1.columns
+gs1 = gs1[['time', 'gu', 'dong', 'sales_index', 'food_rate',
+       'snack_rate', 'drink_rate', 'homeliving_rate', 'health_rate',
+       'hobby_rate', 'social_rate', 'baby_rate', 'food_index', 'snack_index',
+       'drink_index', 'homeliving_index', 'health_index', 'hobby_index',
+       'social_index', 'baby_index']]
+gs1 = gs1.rename(columns={"time":'tm'})
+gs1['dong'] = gs1['dong'].apply(lambda x : x.replace(".",","))
+fine_dust = pd.read_csv("finedust_day1.csv",encoding = 'euc-kr')
+dust = fine_dust.iloc[:,1:]
+dust = dust[['tm', 'dong', 'humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class']]
+dust.isnull().any()
+gsdust = pd.merge(gs1,dust,on = ['tm','dong'],how = 'left')
+gsdust['dong'].drop_duplicates(keep='first')
+gsdust.to_csv("gs_dust.csv",encoding='euc-kr')
+```
+
+> 민감한 행정동 + 편의점
+-하계2동 상계 1동 교남동 가회동 종로5,6가동 중계2,3동 월계 3동 공릉 1동 공릉2동 하계1동 상계8동
+
+```
+gsdust = gsdust[(gsdust['dong']=='하계2동')|(gsdust['dong']=='상계1동')|(gsdust['dong']=='교남동')|(gsdust['dong']=='가회동')|(gsdust['dong']=='종로5,6가동')|(gsdust['dong']=='중계2,3동')|(gsdust['dong']=='월계3동')|(gsdust['dong']=='공릉1동')|(gsdust['dong']=='공릉2동')|(gsdust['dong']=='하계1동')|(gsdust['dong']=='상계8동')]
+
+# 미세먼지 민감도 지수 생성
+tsg = pd.read_csv('df_tsg.csv',encoding='euc-kr')
+tsg.columns
+tsg = tsg[['HDONG_NM', 'SGNG_NM',
+       'AREA', 'LENGTH', 'X_COORD', 'Y_COORD', 'STD_YMD',
+       'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+tsg['all_flow']=tsg['TMST_00']+tsg['TMST_01']+tsg['TMST_02']+tsg['TMST_03']+tsg['TMST_04']+tsg['TMST_05']+tsg['TMST_06']+tsg['TMST_07']+tsg['TMST_08']+tsg['TMST_09']+tsg['TMST_10']+tsg['TMST_11']+tsg['TMST_12']+tsg['TMST_13']+tsg['TMST_14']+tsg['TMST_15']+tsg['TMST_16']+tsg['TMST_17']+tsg['TMST_18']+tsg['TMST_19']+tsg['TMST_20']+tsg['TMST_21']+tsg['TMST_23']+tsg['TMST_22']
+tsg = tsg.rename(columns={'HDONG_NM' :'dong','SGNG_NM':'gu','STD_YMD':'tm'})
+tsg['tm']=tsg['tm'].astype(int)
+tsg['dong'] = tsg['dong'].apply(lambda x: x.replace(".",","))
+gsdust = pd.read_csv("gs_dust.csv",encoding='euc-kr')
+gsdust['tm'] = gsdust['tm'].apply(lambda x: x.replace("-",""))
+
+gsdust['tm'] = gsdust['tm'].astype(int)
+gsppds = pd.merge(gsdust,tsg,on= ['dong','gu','tm'],how='inner')## gs people dust join
+
+data = gsppds[['pm10', 'pm25','pm25_class', 'pm10_class','dong','all_flow']]
+data['pm25_c'] = data['pm25'].apply(lambda x : 1 if x >= 35 else 0)
+data['pm10_c'] = data['pm10'].apply(lambda x : 1 if x >= 80 else 0)                                                       
+mom = 0  
+chd = 0
+for i in range(len(data)):
+    if data['pm25_c'][i]==1: 
+        mom = mom+ data['all_flow'][i]
+    else : 
+        chd += data['all_flow'][i]
+        
+pm25_jisu = (chd/mom)
+mom = 0  
+chd = 0
+mom = 0  
+chd = 0
+pm10_jisu 
+pm25_jisu
+cr25 = pm25_jisu
+cr10 = pm10_jisu 
+cr25 = pm25_jisu
+cr10 = pm10_jisu 
+df1['all_flow']
+def dust_sen(df1,df2,cr25,cr10):
+    ####미세먼지 민감도 25
+        mom1 = 0; chd1 = 0;
+        for i in range(len(df1)):
+            if df1['pm25_c'][i]==1: 
+                mom1 = mom1+ df1['all_flow'][i]
+            else : 
+                chd1 += df1['all_flow'][i]
+        rst25 = (chd1/mom1)
+        print("미세먼지 pm25 민감도 :",rst25)
+        if rst25 > cr25 :print("pm25 미세먼지 민감") 
+        else :print("pm25 미세먼지 덜 민감") 
+        ####미세먼지 민감도 10
+        mom2 = 0; chd2 = 0;
+        for i in range(len(df2)):
+            if df2['pm10_c'][i]==1: 
+                mom2 = mom2+ df2['all_flow'][i]
+            else : 
+                chd2 += df2['all_flow'][i]
+        rst10 = (chd2/mom2)
+        print("미세먼지 pm10 민감도 :",rst10)
+        if rst10 > cr10 :print("pm10 미세먼지 민감") 
+        else :print("pm10 미세먼지 덜 민감") 
+dong_list = data['dong'].drop_duplicates(keep='first')
+print(cr10,cr25)
+for i in range(len(dong_list)):
+            df1 = data[data['dong']==dong_list[i]][['pm25_c','all_flow']]
+            df1 = df1.reset_index()
+            df2 = data[data['dong']==dong_list[i]][['pm10_c','all_flow']]
+            df2 = df2.reset_index()
+            print("행정동명 :",dong_list[i])
+            dust_sen(df1,df2,cr25,cr10)
+dt = gsppds[['dong','humi', 'noise', 'pm10', 'pm25', 'temp','pm25_class', 'pm10_class', 'AREA', 'LENGTH', 'X_COORD',
+       'Y_COORD', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 
+             'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23','all_flow']]
+
+# 동별 유동인구 gis로
+dt.to_csv("flow_gis.csv",encoding= 'utf-8')
+dt1 = dt.groupby('dong').mean()
+dt1.to_csv("flow_gis1.csv",encoding= 'utf-8')
+data= gsppds[['sales_index', 'food_rate', 'snack_rate',
+       'drink_rate', 'homeliving_rate', 'health_rate', 'hobby_rate',
+       'social_rate', 'baby_rate', 'food_index', 'snack_index', 'drink_index',
+       'homeliving_index', 'health_index', 'hobby_index', 'social_index',
+       'baby_index', 'humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'AREA', 'LENGTH', 'X_COORD',
+       'Y_COORD', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+import pydot
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+import sys; print(sys.executable); import graphviz; print(graphviz.__path__) 
+data = data.dropna(axis = 0)
+y = data.sales_index
+x = data[data.columns[data.columns!='sales_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+data = gsppds[['sales_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+data = data.dropna(axis = 0)
+y = data.sales_index
+x = data[data.columns[data.columns!='sales_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+###importance plot
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+
+plt.figure(figsize = (10,10))
+sns.barplot(x=ftr_sort, y = ftr_sort.index)
+plt.show()
+
+data.columns
+data= gsppds[['sales_index', 'food_rate', 'snack_rate','dong',
+       'drink_rate', 'homeliving_rate', 'health_rate', 'hobby_rate',
+       'social_rate', 'baby_rate', 'food_index', 'snack_index', 'drink_index',
+       'homeliving_index', 'health_index', 'hobby_index', 'social_index',
+       'baby_index', 'humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'AREA', 'LENGTH', 'X_COORD',
+       'Y_COORD', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+data = data[(data['dong']=='종로1,2,3,4가동')|(data['dong']=='중계1동')|(data['dong']=='상계1동')|(data['dong']=='이화동')|(data['dong']=='종로5,6가동')|(data['dong']=='상계6,7동')|(data['dong']=='중계3동')|(data['dong']=='공릉1동')|(data['dong']=='상계2동')|(data['dong']=='사직동')]
+
+data1=  data.copy()
+data1 = data1.dropna(axis = 0)
+data1 = data1[['sales_index', 'food_rate', 'snack_rate',
+       'drink_rate', 'homeliving_rate', 'health_rate', 'hobby_rate',
+       'social_rate', 'baby_rate', 'food_index', 'snack_index', 'drink_index',
+       'homeliving_index', 'health_index', 'hobby_index', 'social_index',
+       'baby_index', 'humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'AREA', 'LENGTH', 'X_COORD',
+       'Y_COORD', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
 
 
+y = data1.sales_index
+x = data1[data1.columns[data1.columns!='sales_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+###importance plot
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+
+plt.figure(figsize = (10,10))
+sns.barplot(x=ftr_sort, y = ftr_sort.index)
+plt.show()
+
+gsppds.columns
+
+```
+
+> 매출업종별로 유의미한 변수 의사결정나무로 확인
+```
+# food
+datf = data1[['food_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+datf= datf.dropna(axis = 0)
+y = datf.food_index
+x = datf[datf.columns[datf.columns!='food_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=1)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+# snack
+dats = data1[['snack_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+dats = dats.dropna(axis = 0)
+y = dats.snack_index
+x = dats[dats.columns[dats.columns!='snack_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=1)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+# drink
+datd = data1[['drink_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+datd = datd.dropna(axis = 0)
+y = datd.drink_index
+x = datd[datd.columns[datd.columns!='drink_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=1)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+dath = data1[['homeliving_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+dath = dath.dropna(axis = 0)
+y = dath.homeliving_index
+x = dath[dath.columns[dath.columns!='homeliving_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=1)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+datb = data1[['health_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+datb = datb.dropna(axis = 0)
+y = datb.health_index
+x = datb[datb.columns[datb.columns!='health_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+daty = data1[['hobby_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+daty = daty.dropna(axis = 0)
+y = daty.hobby_index
+x = daty[daty.columns[daty.columns!='hobby_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+dats = data1[['social_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+dats = dats.dropna(axis = 0)
+y = dats.social_index
+x = dats[dats.columns[dats.columns!='social_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=1)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+datb = data1[['baby_index','humi', 'noise', 'pm10', 'pm25', 'temp', 'yoil',
+       'weekend', 'pm25_class', 'pm10_class', 'MAN_FLOW_POP_CNT_0004', 'MAN_FLOW_POP_CNT_0509',
+       'MAN_FLOW_POP_CNT_1014', 'MAN_FLOW_POP_CNT_1519',
+       'MAN_FLOW_POP_CNT_2024', 'MAN_FLOW_POP_CNT_2529',
+       'MAN_FLOW_POP_CNT_3034', 'MAN_FLOW_POP_CNT_3539',
+       'MAN_FLOW_POP_CNT_4044', 'MAN_FLOW_POP_CNT_4549',
+       'MAN_FLOW_POP_CNT_5054', 'MAN_FLOW_POP_CNT_5559',
+       'MAN_FLOW_POP_CNT_6064', 'MAN_FLOW_POP_CNT_6569',
+       'MAN_FLOW_POP_CNT_70U', 'WMAN_FLOW_POP_CNT_0004',
+       'WMAN_FLOW_POP_CNT_0509', 'WMAN_FLOW_POP_CNT_1014',
+       'WMAN_FLOW_POP_CNT_1519', 'WMAN_FLOW_POP_CNT_2024',
+       'WMAN_FLOW_POP_CNT_2529', 'WMAN_FLOW_POP_CNT_3034',
+       'WMAN_FLOW_POP_CNT_3539', 'WMAN_FLOW_POP_CNT_4044',
+       'WMAN_FLOW_POP_CNT_4549', 'WMAN_FLOW_POP_CNT_5054',
+       'WMAN_FLOW_POP_CNT_5559', 'WMAN_FLOW_POP_CNT_6064',
+       'WMAN_FLOW_POP_CNT_6569', 'WMAN_FLOW_POP_CNT_70U', 'TMST_00', 'TMST_01',
+       'TMST_02', 'TMST_03', 'TMST_04', 'TMST_05', 'TMST_06', 'TMST_07',
+       'TMST_08', 'TMST_09', 'TMST_10', 'TMST_11', 'TMST_12', 'TMST_13',
+       'TMST_14', 'TMST_15', 'TMST_16', 'TMST_17', 'TMST_18', 'TMST_19',
+       'TMST_20', 'TMST_21', 'TMST_22', 'TMST_23']]
+
+datb = datb.dropna(axis = 0)
+y = datb.baby_index
+x = datb[datb.columns[datb.columns!='baby_index']]
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=1)
+### 모델 생성
+rm = DecisionTreeRegressor(max_depth = 5)
+model = rm.fit(X_train, y_train)
+###하이퍼 파라미터
+
+###정확도
+print("훈련 세트 정확도: {:.3f}".format(rm.score(X_train, y_train)))
+print("테스트 세트 정확도: {:.3f}".format(rm.score(X_test, y_test)))
+
+ftr_importances_values = rm.feature_importances_
+ftr_importances = pd.Series(ftr_importances_values, index = X_train.columns)
+ftr_sort = ftr_importances.sort_values(ascending=False)
+imp_var = ftr_sort[ftr_sort>0]
+print(imp_var)
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("그래디언트훈련정확도 :",model.score(X_train, y_train)) #
+print("그래디언트테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+```
+
+> 업종별 매출지수를 의사결정나무로 분석해본 결과
+미세먼지가 유의미한 변수에 있는 경우는  baby, social, health&beauty,snackindex가 있었다.
+
+```
+from sklearn.model_selection import GridSearchCV
+
+estimator = DecisionTreeRegressor()
+param_grid = {'criterion':['mse'], 'max_depth':[None,2,3,4,5,6]}
+#param_grid = {'criterion':['mse','friedman_mse','mae'], 'max_depth':[None,2,3,4,5,6], 'max_leaf_nodes':[None,2,3,4,5,6,7], 'min_samples_split':[2,3,4,5,6], 'min_samples_leaf':[1,2,3], max_features:[None,'sqrt','log2',3,4,5]}
+
+grid = GridSearchCV(estimator, param_grid=param_grid) 
+#grid = GridSearchCV(estimator, param_grid=param_grid, cv=3, scoring='r2') #디폴트로 cv=3, 회귀에서 디폴트로 scoring='r2'
+
+grid.fit(X_train, y_train)
+
+print(grid.best_score_)
+print(grid.best_params_)
+df = pd.DataFrame(grid.cv_results_)
+print(df)
+#print(df.sort_values(by='param_max_depth'))
+#print(df.sort_values(by='param_max_depth', ascending=0))
+#print(df.sort_values(by='rank_test_score'))
+
+estimator = grid.best_estimator_
+
+# GradientBoostRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+
+model = GradientBoostingRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print(model.score(X_train, y_train)) #
+print(model.score(X_test, y_test)) #0.7421680021828538
+
+# randomforestregressor
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor()
+
+model.fit(X_train, y_train)
+
+##########모델 검증
+
+print("랜덤숲훈련정확도 :",model.score(X_train, y_train)) #
+print("랜덤숲테스트정확도 :",model.score(X_test, y_test)) #0.7421680021828538
+
+```
+
+------------------
+
+**5. 카드data EDA**
+
+```
+
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+from collections import Counter
+import math
+import glob
+df_card = pd.read_csv("CARD_SPENDING_190809.txt",sep='\t') 
+#빅콘측에서 8월9일 카드데이터 업데이트함
+
+df_card.head()
+
+#df_card[(df_card['DONG_CD'] == 550) & (df_card['GU_CD'] != 110)]
+#구,동 결합한 파생변수 생성
+df_card.loc[:, 'GU_DONG_CD'] = 1000 * df_card.loc[:, 'GU_CD'] + df_card.loc[:, 'DONG_CD']
+df_card.iloc[2:11, 0:11]
+
+#GU_CD 변환
+df_card.loc[df_card['GU_CD'] == 110,'GU_CD'] = ['종로구']
+df_card.loc[df_card['GU_CD'] == 350,'GU_CD'] =['노원구'] 
+df_card['GU_CD'].value_counts()
+df_card.head()
+
+#DONG_CD 변환
+df_card['GUDONG_CD']=df_card['GU_DONG_CD'].astype("category")
+df_card['GUDONG_CD'].cat.categories
+df_card['GUDONG_CD'].cat.categories=['청운효자동','사직동','삼청동','부암동','평창동',
+                                     '무악동','교남동','가회동','종로1,2,3,4가동','종로5,6가동',
+                                     '이화동','혜화동', '창신1동', '창신2동', '창신3동','숭인1동',
+                                     '숭인2동','월계1동','월계2동', '월계3동', '공릉1동', '공릉2동',
+                                     '하계1동','하계2동','중계본동','중계1동','중계4동','중계2,3동',
+                                     '상계1동', '상계2동', '상계3,4동', '상계5동', '상계6,7동', '상계8동',
+                                     '상계9동', '상계10동']
+
+df_card['TYPE']=df_card['MCT_CAT_CD'].astype("category")
+df_card['TYPE'].cat.categories
+df_card['TYPE'].cat.categories=["숙박","레저용품","레저업소","문화취미","가구","전기","주방용구","연료판매",
+                         "광학제품","가전","유통업","의복","직물","신변잡화","서적문구","사무통신","자동차판매",
+                         "자동차정비","의료기관","보건위생","요식업소","음료식품","수리서비스"]
+
+# 필요한 변수만 남기기
+df_card= df_card[['STD_DD','GU_CD','GUDONG_CD','SEX_CD','AGE_CD','TYPE','USE_CNT','USE_AMT']]
+# 이름을 편하게
+df_card = df_card.rename(columns = {'STD_DD': 'STD_YMD'})
+df_card.head()
+
+#일별 카드 데이터
+amt_sum = df_card["USE_AMT"].groupby(df_card["STD_YMD"]).sum() # 일별 이용금액 총합
+cnt_sum = df_card["USE_CNT"].groupby(df_card["STD_YMD"]).sum() # 일별 이용건수의 총합
+amt_mean = df_card["USE_AMT"].groupby(df_card["STD_YMD"]).sum()/df_card["USE_CNT"].groupby(df_card["STD_YMD"]).sum()
+
+card_day = pd.concat([amt_sum,cnt_sum,amt_mean],axis=1,
+                    keys=['amt_sum','cnt_sum','amt_mean'])
+card_day.head()
+
+card_day.to_csv('card_day.csv')
+card_day = pd.read_csv('card_day.csv',index_col='STD_YMD',parse_dates=True)
+
+fig = plt.figure(figsize=(13,4))
+ax1 = fig.add_subplot(1, 2, 1)
+ax2 = fig.add_subplot(1, 2, 2)
+ax1.set_title('USE_CNT')
+ax1.boxplot(df_card['USE_CNT'],vert=False)
+ax2.set_title('USE_AMT')
+ax2.boxplot(df_card['USE_AMT'],vert=False)
+#이용금액과 이용건은 둘다 left-skewed. 각각 median이 47만 9천원과 23건이지만, 상위 25%에서 차이가 가장큼. 
+
+#가장 큰 소비금액 52억원은 2018년 6월 15일 50~59세 남성 샘플인구가 '종로구 종로1.2.3.4가동 (110615)'의 '의료기관(70)'에서 489건 소비함
+df_card.ix[df_card['USE_AMT'].idxmax()]
+
+df_card.iloc[418962:418982,0:10] #최대 소비금액을 (418972)을 기준으로 20개 케이스를 봄. 특별하게 더 많은 소비가 보이진 않음.
+
+df_card.nlargest(50, ['USE_AMT']) 
+
+df_card[df_card["USE_AMT"]>=1095046] 
+
+가장 큰 소비가 일어나는  50곳들은 지역별 특정 소비 패턴이 보임
+- 종로구 종로1.2.3.4가동 (110 615) 의료기관(70) =>"서울대학교 병원" 추정
+- 노원구 상계6.7동 (350 695), 중계본동(350 619) 주유소, LPG가스와 같은 연료판매(33) => 상계 6,7동 "SK엔크린 양지진흥상계주유소", 중계본동 "S-Oil 주유소"
+- 주로 4,50대 소비자들
+- 의료기관에서는 건당 평균 1억원 정도, 연료판매에서는 건당 평균 7만원 정도.
+
+from matplotlib import rc
+rc('font', family='AppleGothic')
+plt.rcParams["font.size"] = 11
+def bindo(df,wid):## char  데이터 빈도 분석, 그래프까지 반환
+    dong = Counter(df)
+    dong_cd = list(dong.keys())
+    dong_va = list(dong.values())
+    dong_df = pd.DataFrame()
+    dong_df['cd'] = dong_cd
+    dong_df['value'] = dong_va##장르 이름
+    print("가장 큰 값 :\n",dong_df[dong_df['value']==dong_df['value'].max()])##가장 큰 값
+    print("가장 작은 값 :\n",dong_df[dong_df['value']==dong_df['value'].min()])##가장 작은값
+    plt.rcParams["font.size"] = 11
+    plt.figure(figsize = (40,20))
+    plt.bar(dong_cd, dong_va,width=wid)
+    plt.xlabel('code', fontsize = 14)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
+    return 
+
+#bindo(df_card['GU_CD'],3)
+# 노원 종로 큰 차이가 없다.
+bindo(df_card['GUDONG_CD'], .5) #빈도가 가장 많은 곳(종로1.2.3.4가동)과 가장 작은 곳(창신3동)의 차이는 약 4배 이상.
+
+# 행정도별 카드 매출
+df_card.head()
+df_cd= df_card.copy()
+dong_amt= df_cd['USE_AMT'].groupby([df_card["GUDONG_CD"]]).mean()
+dong_amt.plot("box")
+plt.figure(figsize = (6,1.5))
+sns.boxplot(dong_amt)
+plt.show()
+dong_amt.values
+temp_x = dong_amt.index
+temp_y = dong_amt.values
+print("최소값:",temp_y.min(),"최대값: ",temp_y.max())
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+from matplotlib import rc
+mpl.rcParams['axes.unicode_minus'] = False
+font_name = fm.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
+rc('font', family=font_name)
+plt.rcParams["font.size"] = 10 ## 폰트 크기 결정
+plt.figure(figsize = (7,5))
+dong_amt.plot("bar")
+
+# 연령카드 매출
+tmp_age = df_cd['USE_AMT'].groupby([df_card["AGE_CD"],df_card["SEX_CD"]]).mean()
+tmp_sex = df_cd['USE_AMT'].groupby([df_card["SEX_CD"],df_card["AGE_CD"]]).mean()
+tmp_sex = df_cd[['USE_AMT','AGE_CD']].groupby([df_card["SEX_CD"]]).mean()
+tmp_sex 
+ = pd.DataFrame(tmp_sex)
+tmp_age
+tmp_age.plot("bar")
+tmp_age.plot("bar")
+
+# 업종별 카드 매출
+df_cdty = df_cd.rename(columns={'TYPE':'업종'})
+tmp_ty = df_cdty['USE_AMT'].groupby([df_cdty["업종"]]).mean()
+
+plt.figure(figsize=(9,5))
+tmp_ty.plot("bar",width=0.6)
+plt.xticks(fontsize = 12)
+plt.xlabel("업종별 평균 카드 매출액",fontsize = 14)
+print("최대매출 : ",tmp_ty.argmax(),tmp_ty.max())
+print("최소매출 : ",tmp_ty.argmin(),tmp_ty.min())
+tmp_ty = df_cdty['USE_CNT'].groupby([df_cdty["업종"]]).sum()
+print("최대매출건수 : ",tmp_ty.argmax(),tmp_ty.max())
+print("최소매출 건수: ",tmp_ty.argmin(),tmp_ty.min())
+plt.figure(figsize=(9,5))
+tmp_ty.plot("bar",width=0.6)
+plt.xticks(fontsize = 12)
+plt.xlabel("업종별 평균 카드 매출건수",fontsize = 14)
+
+tmp_ty = df_cd['USE_AMT'].groupby([df_card["TYPE"]]).mean()
+plt.figure(figsize=(9,5))
+tmp_ty.plot("bar",width=0.5)
+```
+
+-------------------
 
