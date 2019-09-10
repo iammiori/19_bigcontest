@@ -714,6 +714,996 @@ for tag in tags:
 open_output_file.close()
 ```
 
+---------------------
+**3. 카드매출**
+- 전처리
+```
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+card_df = pd.read_csv(r'C:\Users\ejr93\Desktop\빅콘\가공데이터\card_df.txt', sep = '\t')
+card_df.head()
+
+card_df['STD_DD'] = card_df['STD_DD'].astype(str)
+card_df['STD_DD'] = card_df['STD_DD'].apply(lambda x:x[0:4]+'-'+x[4:6]+'-'+x[6:8] )
+card_df['STD_DD'] = card_df['STD_DD'].astype('datetime64[ns]')
+card_df['GU_CD'] = card_df['GU_CD'].astype(str)
+card_df['DONG_CD'] = card_df['DONG_CD'].astype(str)
+card_df['GU_DONG'] = card_df['GU_CD'] + card_df['DONG_CD']
+card_df['GU_DONG'] = card_df['GU_DONG'].astype(int)
+
+def function1(x):
+    if x == 'M':
+        b = '0'
+    elif x == 'F':
+        b = '1'
+    return b
+
+card_df['SEX_CD'] = card_df['SEX_CD'].apply(lambda x: function1(x))
+
+def function2(x):
+    if x == 110515:
+        a = '청운효자동'
+    elif x == 110530:
+        a = '사직동'
+    elif x == 110540:
+        a = '삼청동'
+    elif x == 110550:
+        a = '부암동'
+    elif x == 110560:
+        a = '평창동'
+    elif x == 110570:
+        a = '무악동'
+    elif x == 110580:
+        a = '교남동'
+    elif x == 110600:
+        a = '가회동'
+    elif x == 110615:
+        a = '종로1.2.3.4가동'
+    elif x == 110630:
+        a = '종로5.6가동'
+    elif x == 110640:
+        a = '이화동'
+    elif x == 110650:
+        a = '혜화동'
+    elif x == 110670:
+        a = '창신1동'
+    elif x == 110680:
+        a = '창신2동'
+    elif x == 110690:
+        a = '창신3동'
+    elif x == 110700:
+        a = '숭인1동'
+    elif x == 110710:
+        a = '숭인2동'
+    elif x == 350560:
+        a = '월계1동'
+    elif x == 350570:
+        a = '월계2동'
+    elif x == 350580:
+        a = '월계3동'
+    elif x == 350595:
+        a = '공릉1동'
+    elif x == 350600:
+        a = '공릉2동'
+    elif x == 350611:
+        a = '하계1동'
+    elif x == 350612:
+        a = '하계2동'
+    elif x == 350619:
+        a = '중계본동'
+    elif x == 350621:
+        a = '중계1동'
+    elif x == 350624:
+        a = '중계4동'
+    elif x == 350625:
+        a = '중계2.3동'
+    elif x == 350630:
+        a = '상계1동'
+    elif x == 350640:
+        a = '상계2동'
+    elif x == 350665:
+        a = '상계3.4동'
+    elif x == 350670:
+        a = '상계5동'
+    elif x == 350695:
+        a = '상계6.7동'
+    elif x == 350700:
+        a = '상계8동'
+    elif x == 350710:
+        a = '상계9동'
+    elif x == 350720:
+        a = '상계10동'
+    return a
+
+card_df['DONG_CD'] = card_df['GU_DONG'].apply(lambda x: function2(x))
+
+def function3(x):
+    if x == '110':
+        c = '종로구'
+    elif x == '350':
+        c = '노원구'
+    return c
+card_df['GU_CD'] = card_df['GU_CD'].apply(lambda x: function3(x))
+card_df.drop('GU_DONG', axis = 1, inplace = True)
+card_df.head()
+card_df.to_csv('C:\\Users\\ejr93\\Desktop\\빅콘\\가공데이터\\card_ppc_df.csv', sep = ',')
+```
+
+- 미세먼지 - 매출액 (전체행정동)
+```
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+import statsmodels.api as sm
+finedust_day1_df = pd.read_csv(r'C:\\Users\\ejr93\\Desktop\\빅콘\\가공데이터\\finedust_day1.csv', encoding = 'CP949')
+finedust_day1_df.head(365)
+
+finedust_day1_df.rename(columns = {'tm' : 'time'}, inplace = True)
+
+def function1(x):
+    if x == '종로1,2,3,4가동':
+        a = '종로1.2.3.4가동'
+    elif x == '종로5,6가동':
+        a = '종로5.6가동'
+    elif x == '중계2,3동':
+        a = '중계2.3동'
+    elif x == '상계3,4동':
+        a = '상계3.4동'
+    elif x == '상계6,7동':
+        a = '상계6.7동'
+    else:
+        a = x
+    return a
+
+finedust_day1_df['dong'] = finedust_day1_df['dong'].apply(lambda x: function1(x))
+finedust_day1_df.head()
+card_df.drop('Unnamed: 0', axis = 1, inplace = True)
+card_df.rename(columns = {'STD_DD' : 'time', 'GU_CD' : 'gu', 'DONG_CD' : 'dong'}, inplace = True)
+card_df['time'] = card_df['time'].astype(str)
+card_dust_df = pd.merge(card_df, finedust_day1_df, on = ['time', 'dong'])
+card_dust_df.info()
+
+card_dust_df.drop(['gu_x','dong', 'SEX_CD', 'AGE_CD','Unnamed: 0', 'gu_y', 'humi', 'noise', 'pm25', 'temp', 'yoil', 'weekend','pm25_class', 'pm10_class'], axis = 1, inplace = True)
+card_dust_group_df = card_dust_df.groupby(by = ['time', 'MCT_CAT_CD']).agg({'USE_CNT' : 'sum', 'USE_AMT' : 'sum', 'pm10' : 'mean'})
+card_dust_group_df.reset_index(inplace=True)
+card_dust_group_df.head()
+
+card_dust_group_10_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 10]
+card_dust_group_20_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 20]
+card_dust_group_21_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 21]
+card_dust_group_22_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 22]
+card_dust_group_30_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 30]
+card_dust_group_31_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 31]
+card_dust_group_32_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 32]
+card_dust_group_33_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 33]
+card_dust_group_34_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 34]
+card_dust_group_35_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 35]
+card_dust_group_40_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 40]
+card_dust_group_42_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 42]
+card_dust_group_43_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 43]
+card_dust_group_44_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 44]
+card_dust_group_50_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 50]
+card_dust_group_52_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 52]
+card_dust_group_60_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 60]
+card_dust_group_62_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 62]
+card_dust_group_70_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 70]
+card_dust_group_71_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 71]
+card_dust_group_80_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 80]
+card_dust_group_81_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 81]
+card_dust_group_92_df = card_dust_group_df[card_dust_group_df['MCT_CAT_CD'] == 92]
+
+card_dust_group_10_df.reset_index(inplace=True)
+card_dust_group_20_df.reset_index(inplace=True)
+card_dust_group_21_df.reset_index(inplace=True)
+card_dust_group_22_df.reset_index(inplace=True)
+card_dust_group_30_df.reset_index(inplace=True)
+card_dust_group_31_df.reset_index(inplace=True)
+card_dust_group_32_df.reset_index(inplace=True)
+card_dust_group_33_df.reset_index(inplace=True)
+card_dust_group_34_df.reset_index(inplace=True)
+card_dust_group_35_df.reset_index(inplace=True)
+card_dust_group_40_df.reset_index(inplace=True)
+card_dust_group_42_df.reset_index(inplace=True)
+card_dust_group_43_df.reset_index(inplace=True)
+card_dust_group_44_df.reset_index(inplace=True)
+card_dust_group_50_df.reset_index(inplace=True)
+card_dust_group_52_df.reset_index(inplace=True)
+card_dust_group_60_df.reset_index(inplace=True)
+card_dust_group_62_df.reset_index(inplace=True)
+card_dust_group_70_df.reset_index(inplace=True)
+card_dust_group_71_df.reset_index(inplace=True)
+card_dust_group_80_df.reset_index(inplace=True)
+card_dust_group_81_df.reset_index(inplace=True)
+card_dust_group_92_df.reset_index(inplace=True)
+
+plt.figure(figsize=(8,6), dpi=80)
+plt.plot(card_dust_group_21_df['pm10'], color = 'blue')
+
+from statsmodels.tsa.stattools import adfuller
+
+# 10 
+#모든 변수 분산 안정화 변환
+pm10_10_log = np.log1p(card_dust_group_10_df['pm10'])
+USE_AMT_10_log = np.log1p(card_dust_group_10_df['USE_AMT'])
+adfuller(pm10_10_log) # 10 log_pm10 : 비정상 시계열
+pm10_10_log_diff1 =np.diff(pm10_10_log) 
+adfuller(pm10_10_log_diff1) #log_pm10 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(pm10_10_log_diff1, color = 'blue') #log_pm10 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_dust_group_10_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_10_log) # 10 매출액 : 정상시계열
+USE_AMT_10_log_diff1 = np.diff(USE_AMT_10_log)
+adfuller(USE_AMT_10_log_diff1) # 10 매출액 1차 차분: 정상시계열
+
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_10_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_10_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_10 = sm.tsa.SARIMAX(USE_AMT_10_log,
+                          order=(1,1,1),
+                          seasonal_order=(3,1,0,7),
+                         exog =pm10_10_log)
+results_10 = model_10.fit()
+print (results_10.summary())
+res_10 = results_10.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_10, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_10, lags=50, ax=ax[1])
+plt.show()
+
+# 20
+#모든 변수 분산 안정화 변환
+pm10_20_log = np.log1p(card_dust_group_20_df['pm10'])
+USE_AMT_20_log = np.log1p(card_dust_group_20_df['USE_AMT'])
+adfuller(pm10_20_log) # 20 log_pm10 : 비정상 시계열
+pm10_20_log_diff1 =np.diff(pm10_20_log) 
+adfuller(pm10_20_log_diff1) #log_pm10 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(pm10_20_log_diff1, color = 'blue') #log_pm10 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_dust_group_20_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_20_log) # 20 매출액 : 정상시계열(유의수준 5%)
+USE_AMT_20_log_diff1 = np.diff(USE_AMT_20_log)
+adfuller(USE_AMT_20_log_diff1) #20 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_20_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_20_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_20 = sm.tsa.SARIMAX(USE_AMT_20_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                          exog = pm10_20_log)
+results_20 = model_20.fit()
+print (results_20.summary())
+res_20 = results_20.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_20, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_20, lags=50, ax=ax[1])
+plt.show()
+
+# 22
+#모든 변수 분산 안정화 변환
+pm10_22_log = np.log1p(card_dust_group_22_df['pm10'])
+USE_AMT_22_log = np.log1p(card_dust_group_22_df['USE_AMT'])
+adfuller(pm10_22_log) # 22 log_pm10 : 비정상 시계열
+pm10_22_log_diff1 =np.diff(pm10_22_log) 
+adfuller(pm10_22_log_diff1) #log_pm10 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(pm10_22_log_diff1, color = 'blue') #log_pm10 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_dust_group_22_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_22_log) # 22 매출액 : 정상시계열(유의수준 5%)
+USE_AMT_22_log_diff1 = np.diff(USE_AMT_22_log)
+adfuller(USE_AMT_22_log_diff1) #42 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_22_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_22_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_22 = sm.tsa.SARIMAX(USE_AMT_22_log,
+                          order=(0,1,2),
+                          seasonal_order=(0,1,1,7),
+                         exog = pm10_22_log)
+results_22 = model_22.fit()
+print (results_22.summary())
+res_22 = results_22.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_22, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_22, lags=50, ax=ax[1])
+plt.show()
+
+# 62
+#모든 변수 분산 안정화 변환
+pm10_62_log = np.log1p(card_dust_group_62_df['pm10'])
+USE_AMT_62_log = np.log1p(card_dust_group_62_df['USE_AMT'])
+adfuller(pm10_62_log) # 62 log_pm10 : 비정상 시계열
+pm10_62_log_diff1 =np.diff(pm10_62_log) 
+adfuller(pm10_62_log_diff1) #log_pm10 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(pm10_62_log_diff1, color = 'blue') #log_pm10 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_dust_group_62_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_62_log) # 62 매출액 : 정상시계열
+USE_AMT_62_log_diff1 = np.diff(USE_AMT_62_log)
+adfuller(USE_AMT_62_log_diff1) #62 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_62_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_62_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_62 = sm.tsa.SARIMAX(USE_AMT_62_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =pm10_62_log)
+results_62 = model_62.fit()
+print (results_62.summary())
+res_62 = results_62.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_62, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_62, lags=50, ax=ax[1])
+plt.show()
+
+# 70
+#모든 변수 분산 안정화 변환
+pm10_70_log = np.log1p(card_dust_group_70_df['pm10'])
+USE_AMT_70_log = np.log1p(card_dust_group_70_df['USE_AMT'])
+adfuller(pm10_70_log) # 70 log_pm10 : 비정상 시계열
+pm10_70_log_diff1 =np.diff(pm10_70_log) 
+adfuller(pm10_70_log_diff1) #log_pm10 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(pm10_70_log_diff1, color = 'blue') #log_pm10 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_dust_group_70_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_70_log) # 70 매출액 : 정상시계열
+USE_AMT_70_log_diff1 = np.diff(USE_AMT_70_log)
+adfuller(USE_AMT_70_log_diff1) #70 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_70_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_70_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_70 = sm.tsa.SARIMAX(USE_AMT_70_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =pm10_70_log)
+results_70 = model_70.fit()
+print (results_70.summary())
+res_70 = results_70.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_70, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_70, lags=50, ax=ax[1])
+plt.show()
+```
+
+- 미세먼지언급량 - 매출액 (전체행정동)
+```
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+import statsmodels.api as sm
+
+card_df = pd.read_csv(r'C:\\Users\\ejr93\\Desktop\\빅콘\\가공데이터\\card_ppc_df.csv')
+card_df.head()
+
+card_df.drop('Unnamed: 0', axis = 1, inplace = True)
+card_df.rename(columns = {'STD_DD' : 'time', 'GU_CD' : 'gu', 'DONG_CD' : 'dong'}, inplace = True)
+card_df['time'] = card_df['time'].astype(str)
+dust_count_df = pd.read_csv(r'C:\\Users\\ejr93\\Desktop\\빅콘\\가공데이터\\dust_count.csv', encoding = 'CP949')
+dust_count_df.head()
+card_sns_df = pd.merge(card_df, dust_count_df, on = ['time'])
+card_sns_df.head()
+
+card_sns_df.drop(['gu','dong','USE_CNT' ,'SEX_CD', 'AGE_CD', 'fine_total', 'new_total'], axis = 1, inplace = True)
+card_sns_df.head()
+
+card_sns_group_df = card_sns_df.groupby(by = ['time', 'MCT_CAT_CD']).agg({'USE_AMT' : 'sum', 'cnt_total' : 'mean'})
+card_sns_group_df.reset_index(inplace=True)
+card_sns_group_df.head()
+card_sns_group_df.describe()
+
+card_sns_group_10_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 10]
+card_sns_group_20_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 20]
+card_sns_group_21_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 21]
+card_sns_group_22_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 22]
+card_sns_group_30_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 30]
+card_sns_group_31_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 31]
+card_sns_group_32_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 32]
+card_sns_group_33_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 33]
+card_sns_group_34_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 34]
+card_sns_group_35_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 35]
+card_sns_group_40_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 40]
+card_sns_group_42_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 42]
+card_sns_group_43_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 43]
+card_sns_group_44_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 44]
+card_sns_group_50_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 50]
+card_sns_group_52_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 52]
+card_sns_group_60_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 60]
+card_sns_group_62_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 62]
+card_sns_group_70_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 70]
+card_sns_group_71_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 71]
+card_sns_group_80_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 80]
+card_sns_group_81_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 81]
+card_sns_group_92_df = card_sns_group_df[card_sns_group_df['MCT_CAT_CD'] == 92]
+
+card_sns_group_10_df.reset_index(inplace=True)
+card_sns_group_20_df.reset_index(inplace=True)
+card_sns_group_21_df.reset_index(inplace=True)
+card_sns_group_22_df.reset_index(inplace=True)
+card_sns_group_30_df.reset_index(inplace=True)
+card_sns_group_31_df.reset_index(inplace=True)
+card_sns_group_32_df.reset_index(inplace=True)
+card_sns_group_33_df.reset_index(inplace=True)
+card_sns_group_34_df.reset_index(inplace=True)
+card_sns_group_35_df.reset_index(inplace=True)
+card_sns_group_40_df.reset_index(inplace=True)
+card_sns_group_42_df.reset_index(inplace=True)
+card_sns_group_43_df.reset_index(inplace=True)
+card_sns_group_44_df.reset_index(inplace=True)
+card_sns_group_50_df.reset_index(inplace=True)
+card_sns_group_52_df.reset_index(inplace=True)
+card_sns_group_60_df.reset_index(inplace=True)
+card_sns_group_62_df.reset_index(inplace=True)
+card_sns_group_70_df.reset_index(inplace=True)
+card_sns_group_71_df.reset_index(inplace=True)
+card_sns_group_80_df.reset_index(inplace=True)
+card_sns_group_81_df.reset_index(inplace=True)
+card_sns_group_92_df.reset_index(inplace=True)
+card_sns_group_10_df.head()
+
+plt.figure(figsize=(8,5), dpi=80)
+plt.plot(card_sns_group_21_df['cnt_total'], color = 'blue')
+
+from statsmodels.tsa.stattools import adfuller
+
+# 10분석
+#모든 변수 분산 안정화 변환
+cnt_total_10_log = np.log1p(card_sns_group_10_df['cnt_total'])
+USE_AMT_10_log = np.log1p(card_sns_group_10_df['USE_AMT'])
+adfuller(cnt_total_10_log) # 10 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_10_log_diff1 =np.diff(cnt_total_10_log) 
+adfuller(cnt_total_10_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_10_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_10_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_10_log) # 10 매출액 : 정상시계열
+USE_AMT_10_log_diff1 = np.diff(USE_AMT_10_log)
+adfuller(USE_AMT_10_log_diff1) # 10 매출액 1차 차분: 정상시계열
+
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_10_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_10_log_diff1, lags=50, ax=ax[1])
+plt.show()
+
+model_10 = sm.tsa.SARIMAX(USE_AMT_10_log,
+                          order=(1,1,1),
+                          seasonal_order=(3,1,0,7),
+                         exog =cnt_total_10_log)
+results_10 = model_10.fit()
+print (results_10.summary())
+res_10 = results_10.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_10, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_10, lags=50, ax=ax[1])
+plt.show()
+
+# 20 분석
+#모든 변수 분산 안정화 변환
+cnt_total_20_log = np.log1p(card_sns_group_20_df['cnt_total'])
+USE_AMT_20_log = np.log1p(card_sns_group_20_df['USE_AMT'])
+adfuller(cnt_total_20_log) # 20 log_미세먼지 언급량 : 비정상 시계열
+import statsmodels
+cnt_total_20_log_diff1 =np.diff(cnt_total_20_log) 
+adfuller(cnt_total_20_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_20_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_20_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_20_log) # 20 매출액 : 정상시계열(유의수준 5%)
+USE_AMT_20_log_diff1 = np.diff(USE_AMT_20_log)
+adfuller(USE_AMT_20_log_diff1) #20 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_20_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_20_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_20 = sm.tsa.SARIMAX(USE_AMT_20_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_20_log)
+results_20 = model_20.fit()
+print (results_20.summary())
+res_20 = results_20.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_20, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_20, lags=50, ax=ax[1])
+plt.show()
+
+# 21분석
+#모든 변수 분산 안정화 변환
+cnt_total_21_log = np.log1p(card_sns_group_21_df['cnt_total'])
+USE_AMT_21_log = np.log1p(card_sns_group_21_df['USE_AMT'])
+adfuller(cnt_total_21_log) # 21 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_21_log_diff1 =np.diff(cnt_total_21_log) 
+adfuller(cnt_total_21_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_21_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_21_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_21_log) # 21 매출액 : 정상시계열
+USE_AMT_21_log_diff1 = np.diff(USE_AMT_21_log)
+adfuller(USE_AMT_21_log_diff1) #42 매출액 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(USE_AMT_21_log_diff1, color = 'blue')
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_21_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_21_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_21 = sm.tsa.SARIMAX(USE_AMT_21_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,2,7),
+                         exog =cnt_total_10_log)
+results_21 = model_21.fit()
+print (results_21.summary())
+res_21 = results_21.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_21, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_21, lags=50, ax=ax[1])
+plt.show()
+
+# 22분석
+#모든 변수 분산 안정화 변환
+cnt_total_22_log = np.log1p(card_sns_group_22_df['cnt_total'])
+USE_AMT_22_log = np.log1p(card_sns_group_22_df['USE_AMT'])
+adfuller(cnt_total_22_log) # 22 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_22_log_diff1 =np.diff(cnt_total_22_log) 
+adfuller(cnt_total_22_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_22_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_22_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_22_log) # 22 매출액 : 정상시계열(유의수준 5%)
+USE_AMT_22_log_diff1 = np.diff(USE_AMT_22_log)
+adfuller(USE_AMT_22_log_diff1) #42 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_22_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_22_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_22 = sm.tsa.SARIMAX(USE_AMT_22_log,
+                          order=(1,1,2),
+                          seasonal_order=(1,1,0,7),
+                         exog =cnt_total_22_log)
+results_22 = model_22.fit()
+print (results_22.summary())
+res_22 = results_22.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_22, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_22, lags=50, ax=ax[1])
+plt.show()
+
+# 33분석
+#모든 변수 분산 안정화 변환
+cnt_total_33_log = np.log1p(card_sns_group_33_df['cnt_total'])
+USE_AMT_33_log = np.log1p(card_sns_group_33_df['USE_AMT'])
+adfuller(cnt_total_33_log) # 33 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_33_log_diff1 =np.diff(cnt_total_33_log) 
+adfuller(cnt_total_33_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_33_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(USE_AMT_33_log, color = 'blue')
+adfuller(USE_AMT_33_log) # 33 매출액 : 비정상시계열
+statsmodels.tsa.stattools.coint(USE_AMT_33_log, cnt_total_33_log, trend = 'nc') #H0 : "공적분 존재 안함" 기각 못함
+USE_AMT_33_log_diff1 = np.diff(USE_AMT_33_log)
+adfuller(USE_AMT_33_log_diff1) #33 매출액 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(USE_AMT_33_log_diff1, color = 'blue')
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_33_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_33_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_33 = sm.tsa.SARIMAX(USE_AMT_33_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,1,7),
+                         exog =cnt_total_33_log)
+results_33 = model_33.fit()
+print (results_33.summary())
+res_33 = results_33.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_33, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_33, lags=50, ax=ax[1])
+plt.show()
+
+# 40분석
+#모든 변수 분산 안정화 변환
+cnt_total_40_log = np.log1p(card_sns_group_40_df['cnt_total'])
+USE_AMT_40_log = np.log1p(card_sns_group_40_df['USE_AMT'])
+adfuller(cnt_total_40_log) # 40 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_40_log_diff1 =np.diff(cnt_total_40_log) 
+adfuller(cnt_total_40_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_40_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_40_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_40_log) # 40 매출액 : 정상시계열(유의수준 5%)
+USE_AMT_40_log_diff1 = np.diff(USE_AMT_40_log)
+adfuller(USE_AMT_40_log_diff1) #40 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_40_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_40_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_40 = sm.tsa.SARIMAX(USE_AMT_40_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,1,7),
+                         exog =cnt_total_40_log)
+results_40 = model_40.fit()
+print (results_40.summary())
+res_40 = results_40.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_40, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_40, lags=50, ax=ax[1])
+plt.show()
+
+# 42
+#모든 변수 분산 안정화 변환
+cnt_total_42_log = np.log1p(card_sns_group_42_df['cnt_total'])
+USE_AMT_42_log = np.log1p(card_sns_group_42_df['USE_AMT'])
+adfuller(cnt_total_42_log) # 42 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_42_log_diff1 =np.diff(cnt_total_42_log) 
+adfuller(cnt_total_42_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_42_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_42_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_42_log) # 42 매출액 : 비정상 시계열
+statsmodels.tsa.stattools.coint(USE_AMT_42_log, cnt_total_42_log, trend = 'nc') #H0 : "공적분 존재 안함" 기각 못함
+USE_AMT_42_log_diff1 = np.diff(USE_AMT_42_log)
+adfuller(USE_AMT_42_log_diff1) #42 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_42_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_42_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_42 = sm.tsa.SARIMAX(USE_AMT_42_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_42_log)
+results_42 = model_42.fit()
+print (results_42.summary())
+res_42 = results_42.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_42, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_42, lags=50, ax=ax[1])
+plt.show()
+
+# 43분석 
+#모든 변수 분산 안정화 변환
+cnt_total_43_log = np.log1p(card_sns_group_43_df['cnt_total'])
+USE_AMT_43_log = np.log1p(card_sns_group_43_df['USE_AMT'])
+adfuller(cnt_total_43_log) # 43 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_43_log_diff1 =np.diff(cnt_total_43_log) 
+adfuller(cnt_total_43_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_43_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_43_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_43_log) # 43 매출액 : 정상시계열
+USE_AMT_43_log_diff1 = np.diff(USE_AMT_43_log)
+adfuller(USE_AMT_43_log_diff1) #43 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_43_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_43_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_43 = sm.tsa.SARIMAX(USE_AMT_43_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,1,7),
+                         exog =cnt_total_43_log)
+results_43 = model_43.fit()
+print (results_43.summary())
+res_43 = results_43.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_43, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_43, lags=50, ax=ax[1])
+plt.show()
+
+# 44분석
+#모든 변수 분산 안정화 변환
+cnt_total_44_log = np.log1p(card_sns_group_44_df['cnt_total'])
+USE_AMT_44_log = np.log1p(card_sns_group_44_df['USE_AMT'])
+adfuller(cnt_total_44_log) # 44 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_44_log_diff1 =np.diff(cnt_total_44_log) 
+adfuller(cnt_total_44_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_44_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_44_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_44_log) # 44 매출액 : 정상시계열
+USE_AMT_44_log_diff1 = np.diff(USE_AMT_44_log)
+adfuller(USE_AMT_44_log_diff1) #43 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_44_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_44_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_44 = sm.tsa.SARIMAX(USE_AMT_44_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,1,7),
+                         exog =cnt_total_44_log)
+results_44 = model_44.fit()
+print (results_44.summary())
+res_44 = results_44.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_44, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_44, lags=50, ax=ax[1])
+plt.show()
+
+# 50분석
+#모든 변수 분산 안정화 변환
+cnt_total_50_log = np.log1p(card_sns_group_50_df['cnt_total'])
+USE_AMT_50_log = np.log1p(card_sns_group_50_df['USE_AMT'])
+adfuller(cnt_total_50_log) # 50 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_50_log_diff1 =np.diff(cnt_total_50_log) 
+adfuller(cnt_total_50_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_50_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_50_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_50_log) # 50 매출액 : 비정상시계열
+statsmodels.tsa.stattools.coint(USE_AMT_50_log, cnt_total_50_log, trend = 'nc') #H0 : "공적분 존재 안함" 기각 못함
+USE_AMT_50_log_diff1 = np.diff(USE_AMT_50_log)
+adfuller(USE_AMT_50_log_diff1) #50 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_50_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_50_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_50 = sm.tsa.SARIMAX(USE_AMT_50_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,1,7),
+                         exog =cnt_total_50_log)
+results_50 = model_50.fit()
+print (results_50.summary())
+res_50 = results_50.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_50, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_50, lags=50, ax=ax[1])
+plt.show()
+
+# 62분석
+#모든 변수 분산 안정화 변환
+cnt_total_62_log = np.log1p(card_sns_group_62_df['cnt_total'])
+USE_AMT_62_log = np.log1p(card_sns_group_62_df['USE_AMT'])
+adfuller(cnt_total_62_log) # 62 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_62_log_diff1 =np.diff(cnt_total_62_log) 
+adfuller(cnt_total_62_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_62_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_62_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_62_log) # 62 매출액 : 정상시계열
+USE_AMT_62_log_diff1 = np.diff(USE_AMT_62_log)
+adfuller(USE_AMT_62_log_diff1) #62 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_62_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_62_log_diff1, lags=50, ax=ax[1])
+plt.show()
+card_sns_group_62_df.head()
+model_62 = sm.tsa.SARIMAX(USE_AMT_62_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_62_log)
+results_62 = model_62.fit()
+print (results_62.summary())
+res_62 = results_62.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_62, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_62, lags=50, ax=ax[1])
+plt.show()
+
+# 70분석
+#모든 변수 분산 안정화 변환
+cnt_total_70_log = np.log1p(card_sns_group_70_df['cnt_total'])
+USE_AMT_70_log = np.log1p(card_sns_group_70_df['USE_AMT'])
+adfuller(cnt_total_70_log) # 70 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_70_log_diff1 =np.diff(cnt_total_70_log) 
+adfuller(cnt_total_70_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_70_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_70_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_70_log) # 70 매출액 : 정상시계열
+USE_AMT_70_log_diff1 = np.diff(USE_AMT_70_log)
+adfuller(USE_AMT_70_log_diff1) #70 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_70_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_70_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_70 = sm.tsa.SARIMAX(USE_AMT_70_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_70_log)
+results_70 = model_70.fit()
+print (results_70.summary())
+res_70 = results_70.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_70, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_70, lags=50, ax=ax[1])
+plt.show()
+
+# 71분석
+#모든 변수 분산 안정화 변환
+cnt_total_71_log = np.log1p(card_sns_group_71_df['cnt_total'])
+USE_AMT_71_log = np.log1p(card_sns_group_71_df['USE_AMT'])
+adfuller(cnt_total_71_log) # 71 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_71_log_diff1 =np.diff(cnt_total_71_log) 
+adfuller(cnt_total_71_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_71_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_71_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_71_log) # 71 매출액 : 정상시계열
+USE_AMT_71_log_diff1 = np.diff(USE_AMT_71_log)
+adfuller(USE_AMT_71_log_diff1) #71 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_71_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_71_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_71 = sm.tsa.SARIMAX(USE_AMT_71_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_71_log)
+results_71 = model_71.fit()
+print (results_71.summary())
+res_71 = results_71.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_71, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_71, lags=50, ax=ax[1])
+plt.show()
+
+# 80분석
+#모든 변수 분산 안정화 변환
+cnt_total_80_log = np.log1p(card_sns_group_80_df['cnt_total'])
+USE_AMT_80_log = np.log1p(card_sns_group_80_df['USE_AMT'])
+adfuller(cnt_total_80_log) # 80 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_80_log_diff1 =np.diff(cnt_total_80_log) 
+adfuller(cnt_total_80_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_80_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_80_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_80_log) # 80 매출액 : 정상시계열
+USE_AMT_80_log_diff1 = np.diff(USE_AMT_80_log)
+adfuller(USE_AMT_80_log_diff1) #80 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_80_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_80_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_80 = sm.tsa.SARIMAX(USE_AMT_80_log,
+                          order=(1,1,1),
+                          seasonal_order=(1,1,1,7),
+                         exog =cnt_total_80_log)
+results_80 = model_80.fit()
+print (results_80.summary())
+res_80 = results_80.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_80, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_80, lags=50, ax=ax[1])
+plt.show()
+
+# 81분석
+#모든 변수 분산 안정화 변환
+cnt_total_81_log = np.log1p(card_sns_group_81_df['cnt_total'])
+USE_AMT_81_log = np.log1p(card_sns_group_81_df['USE_AMT'])
+adfuller(cnt_total_81_log) # 81 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_81_log_diff1 =np.diff(cnt_total_81_log) 
+adfuller(cnt_total_81_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_81_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_81_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_81_log) # 81 매출액 : 정상시계열
+USE_AMT_81_log_diff1 = np.diff(USE_AMT_81_log)
+adfuller(USE_AMT_81_log_diff1) #81 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_81_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_81_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_81 = sm.tsa.SARIMAX(USE_AMT_81_log,
+                          order=(0,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_81_log)
+results_81 = model_81.fit()
+print (results_81.summary())
+res_81 = results_81.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_81, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_81, lags=50, ax=ax[1])
+plt.show()
+
+# 92분석
+#모든 변수 분산 안정화 변환
+cnt_total_92_log = np.log1p(card_sns_group_92_df['cnt_total'])
+USE_AMT_92_log = np.log1p(card_sns_group_92_df['USE_AMT'])
+adfuller(cnt_total_92_log) # 92 log_미세먼지 언급량 : 비정상 시계열
+cnt_total_92_log_diff1 =np.diff(cnt_total_92_log) 
+adfuller(cnt_total_92_log_diff1) #log_미세먼지 언급량 1차 차분 : 정상시계열
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(cnt_total_92_log_diff1, color = 'blue') #log_미세먼지 언급량 1차 차분 plot
+plt.figure(figsize=(10,5), dpi=80)
+plt.plot(card_sns_group_92_df['USE_AMT'], color = 'blue')
+adfuller(USE_AMT_92_log) # 92 매출액 : 비정상시계열
+USE_AMT_92_log_diff1 = np.diff(USE_AMT_92_log)
+adfuller(USE_AMT_92_log_diff1) #92 매출액 1차 차분 : 정상시계열
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(USE_AMT_92_log_diff1, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(USE_AMT_92_log_diff1, lags=50, ax=ax[1])
+plt.show()
+model_92 = sm.tsa.SARIMAX(USE_AMT_92_log,
+                          order=(1,1,1),
+                          seasonal_order=(0,1,1,7),
+                         exog =cnt_total_92_log)
+results_92 = model_92.fit()
+print (results_92.summary())
+res_92 = results_92.resid
+fig,ax = plt.subplots(2,1,figsize=(15,8))
+fig = sm.graphics.tsa.plot_acf(res_92, lags=50, ax=ax[0])
+fig = sm.graphics.tsa.plot_pacf(res_92, lags=50, ax=ax[1])
+plt.show()
+```
+
+- 민감업종별 주요 행정동
+```
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+import statsmodels.api as sm
+card_df = pd.read_csv(r'C:\\Users\\ejr93\\Desktop\\빅콘\\가공데이터\\card_ppc_df.csv')
+card_df.head()
+card_df.drop('Unnamed: 0', axis = 1, inplace = True)
+card_df.rename(columns = {'STD_DD' : 'time', 'GU_CD' : 'gu', 'DONG_CD' : 'dong'}, inplace = True)
+card_df['time'] = card_df['time'].astype(str)
+card_df.head()
+card_92_df = card_df[card_df['MCT_CAT_CD'] == 92]
+card_70_df = card_df[card_df['MCT_CAT_CD'] == 70]
+card_62_df = card_df[card_df['MCT_CAT_CD'] == 62]
+card_10_df = card_df[card_df['MCT_CAT_CD'] == 10]
+card_20_df = card_df[card_df['MCT_CAT_CD'] == 20]
+card_22_df = card_df[card_df['MCT_CAT_CD'] == 22]
+card_71_df = card_df[card_df['MCT_CAT_CD'] == 71]
+card_81_df = card_df[card_df['MCT_CAT_CD'] == 81]
+card_92_group_df = card_92_df.groupby(by = 'dong').sum()
+card_92_group_df = card_92_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_92_group_df.head()
+card_70_group_df = card_70_df.groupby(by = 'dong').sum()
+card_70_group_df = card_70_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_70_group_df.head()
+card_62_group_df = card_62_df.groupby(by = 'dong').sum()
+card_62_group_df = card_62_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_62_group_df.head()
+card_10_group_df = card_10_df.groupby(by = 'dong').sum()
+card_10_group_df = card_10_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_10_group_df.head()
+card_20_group_df = card_20_df.groupby(by = 'dong').sum()
+card_20_group_df = card_20_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_20_group_df.head()
+card_22_group_df = card_22_df.groupby(by = 'dong').sum()
+card_22_group_df = card_22_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_22_group_df.head()
+card_71_group_df = card_71_df.groupby(by = 'dong').sum()
+card_71_group_df = card_71_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_71_group_df.head()
+card_81_group_df = card_81_df.groupby(by = 'dong').sum()
+card_81_group_df = card_81_group_df.sort_values(['USE_AMT'], ascending=[False])
+card_81_group_df.head()
+```
+
+
+
 
 
 
