@@ -1,6 +1,7 @@
 # 19_bigcontest (최우수상 수상, SKT)
 Bigcontest Innovation 
 *team : 미세베이션*
+<br>
 *member : 이승태, 이미연, 조아란, 김만덕, 오효은
 
 ----------------------------------------
