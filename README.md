@@ -3,7 +3,7 @@ Bigcontest Innovation
 *team : 미세베이션*
 <br>
 * member : 이승태, 이미연, 조아란, 김만덕, 오효은
-* [미세베이션 최종.pdf](https://github.com/iammiori/19_bigcontest/files/4316081/default.pdf)
+* [최종 발표자료](https://github.com/iammiori/19_bigcontest/files/4316081/default.pdf)
 ----------------------------------------
 **1. 환경기상데이터 전처리**
 - 패키지 설치
