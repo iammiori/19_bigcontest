@@ -1,4 +1,4 @@
-# 19_bigcontest (최우수상 수상, SKT)
+# 2019 bigcontest (최우수상 수상, SKT)
 Bigcontest Innovation 
 *team : 미세베이션*
 <br>
